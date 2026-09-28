@@ -57,7 +57,9 @@ class MushroomSource(eqx.Module):
 
         signed_type = jnp.where(food_state.type, 1, -1)
 
-        return (match * signed_type).sum(axis=-1)
+        mushroom_obs = (match * signed_type).sum(axis=-1)
+
+        return mushroom_obs
 
 
 

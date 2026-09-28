@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import equinox as eqx
 
-
 # Position updates based on direction
 TURN = jnp.array([0, 1, -1, 0])
 MOVE = jnp.array([0, 0, 0, 1])
@@ -28,6 +27,7 @@ class World(eqx.Module):
     energy_start: float
     energy_decay: float
     food_sources: tuple
+    observation_channels: tuple
     death_enabled: bool = eqx.field(static=True, default=True)
 
 
@@ -77,6 +77,14 @@ class World(eqx.Module):
         agents = self._apply_death(agents)
 
         return agents, food_states
+
+    def _build_obs(self, agents, food_states):
+
+        qx, qy = self._window_cells(agents)
+        obs_layers = [ch.compute(agents, food_states, qx, qy) for ch in self.observation_channels]
+        obs = jnp.stack(obs_layers, axis=-1)
+        return obs
+
 
     def _apply_eat(self, key, agents, food_states, eat_decision):
 
