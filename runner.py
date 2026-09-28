@@ -47,8 +47,9 @@ def run_policy(world, policy, num_steps, key):
     (key, agents, food_states), eat_deltas = jax.lax.scan(step, (key, agents, food_states), None, length=num_steps)
 
     meals = eat_deltas != 0
-    T = num_steps / meals.sum()
-    fraction_poisonous = (eat_deltas < 0).sum() / meals.sum()
+    meal_count = meals.sum()
+    T = jnp.where(meal_count > 0, num_steps / meal_count, jnp.nan)
+    fraction_poisonous = jnp.where(meal_count > 0, (eat_deltas < 0).sum() / meal_count, jnp.nan)
     G = eat_deltas.mean() - world.energy_decay
     return T, fraction_poisonous, G
 
@@ -62,11 +63,15 @@ def run_policy_batch(world, policy, num_steps, num_seeds, base_seed=0):
 def log_results(policy_name, config, T, fraction_poisonous, G):
     wandb.init(project="mushroom-language", config={**config, "policy": policy_name})
 
+    n_zero_meal_seeds = int(jnp.isnan(T).sum())
+    T_valid = T[~jnp.isnan(T)]
+
     wandb.log({
-        "T_mean": float(T.mean()), "T_std": float(T.std()),
-        "fraction_poisonous_mean": float(fraction_poisonous.mean()),
+        "T_mean": float(jnp.nanmean(T)), "T_std": float(jnp.nanstd(T)),
+        "fraction_poisonous_mean": float(jnp.nanmean(fraction_poisonous)),
         "G_mean": float(G.mean()), "G_std": float(G.std()),
-        "T_histogram": wandb.Histogram(T),
+        "zero_meal_seeds": n_zero_meal_seeds,
+        "T_histogram": wandb.Histogram(T_valid) if T_valid.size > 0 else None,
         "G_histogram": wandb.Histogram(G),
         "per_seed": wandb.Table(dataframe=pd.DataFrame({
             "seed": range(len(T)),

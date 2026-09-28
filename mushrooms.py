@@ -19,6 +19,12 @@ class MushroomSource(eqx.Module):
     poison_multiplier: float
     respawn_strategy: RespawnStrategy
 
+    def __post_init__(self):
+        if self.poison_multiplier < 0:
+            raise ValueError(f"poison_multiplier must be positive, got {self.poison_multiplier}")
+
+
+
     def reset(self, key):
 
         key, sk1, sk2 = jax.random.split(key, 3)
