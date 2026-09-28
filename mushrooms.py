@@ -49,6 +49,18 @@ class MushroomSource(eqx.Module):
 
         return mushrooms, energy_delta
 
+    def type_at(self, food_state, query_posx, query_posy):
+        same_x = query_posx[..., None] == food_state.posx
+        same_y = query_posy[..., None] == food_state.posy
+
+        match = same_x & same_y
+
+        signed_type = jnp.where(food_state.type, 1, -1)
+
+        return (match * signed_type).sum(axis=-1)
+
+
+
 
 
 

@@ -78,31 +78,6 @@ class World(eqx.Module):
 
         return agents, food_states
 
-
-    def _bearing_and_distance(self,
-                              agents,
-                              target_posx,
-                              target_posy):
-
-        heading_x = DX[agents.direction].astype(jnp.float32)
-        heading_y = DY[agents.direction].astype(jnp.float32)
-
-        posx = agents.posx
-        posy = agents.posy
-
-        dx = target_posx - posx
-        dy = target_posy - posy
-
-        dx = (dx + self.SX // 2) % self.SX - self.SX // 2
-        dy = (dy + self.SY // 2) % self.SY - self.SY // 2
-
-        dist = jnp.sqrt(dx ** 2 + dy ** 2 + 1e-8)
-
-        cos = heading_x * (dx / dist) + heading_y * (dy / dist)
-        sin = heading_x * (dy / dist) - heading_y * (dx / dist)
-
-        return (cos, sin, dist)
-
     def _apply_eat(self, key, agents, food_states, eat_decision):
 
         energy_delta_total = jnp.zeros_like(agents.energy)
@@ -170,6 +145,45 @@ class World(eqx.Module):
                         energy=agents.energy)
 
         return agents
+
+    def _bearing_and_distance(self,
+                              agents,
+                              target_posx,
+                              target_posy):
+
+        heading_x = DX[agents.direction].astype(jnp.float32)
+        heading_y = DY[agents.direction].astype(jnp.float32)
+
+        posx = agents.posx
+        posy = agents.posy
+
+        dx = target_posx - posx
+        dy = target_posy - posy
+
+        dx = (dx + self.SX // 2) % self.SX - self.SX // 2
+        dy = (dy + self.SY // 2) % self.SY - self.SY // 2
+
+        dist = jnp.sqrt(dx ** 2 + dy ** 2 + 1e-8)
+
+        cos = heading_x * (dx / dist) + heading_y * (dy / dist)
+        sin = heading_x * (dy / dist) - heading_y * (dx / dist)
+
+        return (cos, sin, dist)
+
+    def _window_cells(self, agents):
+        fx, fy = DX[agents.direction], DY[agents.direction]
+        rx, ry = DY[agents.direction], -DX[agents.direction]
+
+        rows = jnp.array([0, 1, 2])
+        cols = jnp.array([-2, -1, 0, 1, 2])
+
+        qx = (agents.posx[:, None, None] + rows[None, :, None]*fx[:, None, None] + cols[None, None, :]*rx[:, None, None]) % self.SX
+        qy = (agents.posy[:, None, None] + rows[None, :, None] * fy[:, None, None] + cols[None, None, :] * ry[:, None,
+                                                                                   None]) % self.SY
+
+        return qx, qy
+
+
 
 def decode_movement(movement_bits):
 

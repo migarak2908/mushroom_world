@@ -11,6 +11,9 @@ class FoodSource(Protocol):
     def consume_and_respawn(self, key, food_state, agent_posx, agent_posy, eat_decision, alive) -> tuple[Any, Any]:
         ...
 
+    def type_at(self, food_state, query_posx, query_posy) -> Any:
+        ...
+
 class RespawnStrategy(Protocol):
     def respawn(self, key, posx, posy) -> tuple[Any, Any]:
         ...
