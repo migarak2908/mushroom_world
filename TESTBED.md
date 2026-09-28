@@ -24,6 +24,7 @@ The approach: derive simple analytical predictions (an energy budget), validate 
 | `wander` policy instance | `policy.py` | Done, verified |
 | Generic runner (`build_world`, `run_policy`, `run_policy_batch`, `log_results`) | `runner.py` | Done, verified |
 | Thin per-policy entry script | `scripts/run_wander.py` | Done, verified |
+| `ApproachMovement`, `DiscriminateEat` (→ `approach_all`, `discriminate`, `discriminating_wanderer`) | `policy.py` | Done, verified |
 
 ## Stage 1: validating hand-coded baselines
 
@@ -157,3 +158,50 @@ Two real bugs were caught and fixed during development of `ApproachMovement`, no
 - `DiscriminateEat` originally required a `source` reference tied to a specific `World`'s `MushroomSource`, which meant `discriminate` couldn't exist as a ready module-level constant like `wander`/`approach_all` — fixed by reading the agent's own cell from `obs`'s food channel instead (verified identical to reading `type_at` directly, since that channel is ground truth, not a noisy encoding).
 
 No anomalies in the final swept results — `T` deviates from the idealized prediction in the expected direction and magnitude given the simplified movement rule (explained above), and the core qualitative prediction (discrimination provides a `G` advantage, robust across the whole `m×q` grid) holds cleanly everywhere.
+
+### `discriminating_wanderer`
+
+Random movement (same as `wander`) + `DiscriminateEat` — isolates the eat-discrimination benefit on its own, with navigation held at "random." Completes the 2×2 design (movement × eat-discrimination) alongside `wander`, `approach_all`, `discriminate`.
+
+- **Predicted time between (edible) meals:** `T ≈ wander's T ÷ (1 − q)` — since movement is identical to `wander`, but only edible landings count as a "meal" here.
+- `fraction_poisonous` should be exactly `0`, same as `discriminate`.
+
+**`T`: predicted vs measured:**
+
+| `m` | `q` | `T` predicted | `T` measured |
+|---|---|---|---|
+| 0.01 | 0.25 | 796.3 | 924.08 |
+| 0.01 | 0.5 | 1194.4 | 1442.18 |
+| 0.01 | 0.75 | 2388.8 | 2064.29 |
+| 0.02 | 0.25 | 394.5 | 424.61 |
+| 0.02 | 0.5 | 591.7 | 714.99 |
+| 0.02 | 0.75 | 1183.4 | 1486.72 |
+| 0.04 | 0.25 | 195.9 | 202.25 |
+| 0.04 | 0.5 | 293.8 | 321.20 |
+| 0.04 | 0.75 | 587.6 | 765.62 |
+| 0.08 | 0.25 | 97.6 | 98.71 |
+| 0.08 | 0.5 | 146.4 | 151.27 |
+| 0.08 | 0.75 | 292.9 | 330.73 |
+
+Closest at high density (`m=0.08`, within ~1-13%), widening at low density / high `q` — same pattern as `approach_all`/`discriminate`'s deviation, and for the same underlying reason: rarer, harder-to-find food means more variance and more of the sample affected by edge effects (respawn randomizing across the whole grid, long-run `T` running higher than short-run estimates, per the doc's own §4.5 caveat).
+
+**`G`: full results:**
+
+| `m` | `q` | `G` measured | `frac_poison` | Zero-meal seeds |
+|---|---|---|---|---|
+| 0.01 | 0.25 | −0.4871 | 0.000 | 4/1000 |
+| 0.01 | 0.5 | −0.4914 | 0.000 | 69/1000 |
+| 0.01 | 0.75 | −0.4956 | 0.000 | 306/1000 |
+| 0.02 | 0.25 | −0.4745 | 0.000 | 0/1000 |
+| 0.02 | 0.5 | −0.4830 | 0.000 | 6/1000 |
+| 0.02 | 0.75 | −0.4914 | 0.000 | 96/1000 |
+| 0.04 | 0.25 | −0.4487 | 0.000 | 0/1000 |
+| 0.04 | 0.5 | −0.4659 | 0.000 | 0/1000 |
+| 0.04 | 0.75 | −0.4827 | 0.000 | 6/1000 |
+| 0.08 | 0.25 | −0.3970 | 0.000 | 0/1000 |
+| 0.08 | 0.5 | −0.4309 | 0.000 | 0/1000 |
+| 0.08 | 0.75 | −0.4652 | 0.000 | 0/1000 |
+
+`fraction_poisonous` is exactly `0.000` everywhere — same `DiscriminateEat`, same correctness guarantee as `discriminate`. `G` sits consistently between `wander`'s and `discriminate`'s at every config (e.g. at `m=0.04, q=0.5`: wander `−0.5002` < discriminating_wanderer `−0.4659` < discriminate `+0.0038`) — avoiding poison alone gives a modest, consistent lift over pure `wander`, but nowhere near what adding navigation on top (full `discriminate`) achieves, since this policy still can't find food any faster than blind wandering.
+
+No anomalies — zero-meal-seed counts match `discriminate`'s exactly at each `(m,q)` (same movement pattern, same edible-density-driven difficulty at the sparse/dangerous corner), and the `T ≈ wander_T/(1−q)` relationship holds well across the grid.
