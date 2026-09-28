@@ -85,3 +85,4 @@ class DiscriminateEat(eqx.Module):
 wander = ComposedPolicy(movement_rule=RandomMovement(), eat_rule=AlwaysEat())
 approach_all = ComposedPolicy(movement_rule=ApproachMovement(edible_only=False), eat_rule=AlwaysEat())
 discriminate = ComposedPolicy(movement_rule=ApproachMovement(edible_only=True), eat_rule=DiscriminateEat())
+discriminating_wanderer = ComposedPolicy(movement_rule=RandomMovement(), eat_rule=DiscriminateEat())
