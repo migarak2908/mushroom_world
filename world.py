@@ -35,6 +35,7 @@ class World(eqx.Module):
         if self.energy_decay < 0:
             raise ValueError(f"energy_decay must be positive, got {self.energy_decay}")
 
+
     def _reset(self, key):
 
         SX = self.SX
@@ -71,12 +72,12 @@ class World(eqx.Module):
 
     def _step(self, key,  agents, food_states, turn, move, eat_decision):
 
-        agents, food_states = self._apply_eat(key, agents, food_states, eat_decision)
+        agents, food_states, eat_energy_delta = self._apply_eat(key, agents, food_states, eat_decision)
         agents = self._apply_movement(agents, turn, move)
         agents = self._apply_decay(agents)
         agents = self._apply_death(agents)
 
-        return agents, food_states
+        return agents, food_states, eat_energy_delta
 
     def _build_obs(self, agents, food_states):
 
@@ -105,7 +106,7 @@ class World(eqx.Module):
 
         agents = eqx.tree_at(lambda a: a.energy, agents, agents.energy + energy_delta_total)
 
-        return agents, tuple(new_food_states)
+        return agents, tuple(new_food_states), energy_delta_total
 
 
 

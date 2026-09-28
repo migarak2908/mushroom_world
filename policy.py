@@ -42,3 +42,4 @@ class AlwaysEat(eqx.Module):
         eat_decision = jnp.ones(shape=(n,), dtype=bool)
         return eat_decision
 
+wander = ComposedPolicy(movement_rule=RandomMovement(), eat_rule=AlwaysEat())
