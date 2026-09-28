@@ -12,7 +12,7 @@ import os
 import hashlib
 from scipy.stats import qmc
 
-from probe import probe_population
+from archive.probe import probe_population
 
 # Fixed params
 SX = 100

@@ -34,8 +34,6 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-import hashlib
-
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -46,7 +44,7 @@ from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
 from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgba
 
 from mushroom_world import MushroomWorld
-from probe import probe_population
+from archive.probe import probe_population
 
 # ---------------------------------------------------------------------------
 # Which run to replay

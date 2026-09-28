@@ -38,7 +38,7 @@ import equinox as eqx
 from scipy.stats import qmc
 
 from mushroom_world import MushroomWorld
-from probe import probe_population
+from archive.probe import probe_population
 
 # ---------------------------------------------------------------------------
 # Fixed params -- must match sweep.py's fixed params for comparability

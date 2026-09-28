@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import equinox as eqx
 
+
 from agent import Network, Recurrent_Network
 
 # Initialise a world that is a grid of size X, Y. Populate this grid with n agents at random locations.
@@ -56,7 +57,6 @@ class Mushrooms(eqx.Module):
     shuffle_countdown: jnp.int32
 
 
-
 class MushroomWorld(eqx.Module):
     seed: int
     grid_x: int
@@ -77,10 +77,6 @@ class MushroomWorld(eqx.Module):
     recurrent: bool = eqx.field(static=True, default=False)
     pain_pleasure: bool = eqx.field(static=True, default=True)
     h_size: int = eqx.field(static=True, default=5)
-
-    def __post_init__(self):
-        if self.energy_decay <= 0:
-            raise ValueError(f"energy_decay must be positive, got {self.energy_decay}")
 
     def _build_networks(self, key, n):
         keys = jax.random.split(key, n)

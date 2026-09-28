@@ -40,7 +40,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 import matplotlib.pyplot as plt
 
-from probe import load_networks, NEUTRAL_SIGNAL, NEUTRAL_OUTCOME
+from archive.probe import load_networks, NEUTRAL_SIGNAL, NEUTRAL_OUTCOME
 from mushroom_world import MUSH_LIBRARY
 
 # ---------------------------------------------------------------------------

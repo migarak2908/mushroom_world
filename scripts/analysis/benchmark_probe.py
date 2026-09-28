@@ -12,9 +12,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import time
 
 import jax
-import numpy as np
 
-from probe import probe_population, load_networks, MAX_AGENTS
+from archive.probe import probe_population, load_networks, MAX_AGENTS
 from agent import Network
 import equinox as eqx
 

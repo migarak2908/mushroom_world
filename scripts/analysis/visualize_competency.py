@@ -22,7 +22,7 @@ import jax
 import numpy as np
 import matplotlib.pyplot as plt
 
-from probe import probe_population, load_networks
+from archive.probe import probe_population, load_networks
 
 # ---------------------------------------------------------------------------
 # Which saved run to load
