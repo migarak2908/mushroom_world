@@ -22,12 +22,32 @@ These four span the combinations of "moves with purpose" × "eats with discrimin
 
 ## Predictions
 
-From the energy budget alone:
+**Symbols:** `m` mushroom density, `q` fraction poisonous, `N` energy from an edible mushroom, `P` energy lost from a poisonous one (as a multiple of `N`), `d` energy lost per step, `T` average steps between meals, `G` average net energy change per step.
 
-- **Average energy gained per meal**, for an indiscriminate eater: `M = N × [(1 − q) − q×P]`. This is positive only when `q < 1/(1+P)` — otherwise the average meal is a net loss no matter how good `N` is.
-- **Net energy per step:** `G = M/T − d`, where `T` is the average number of steps between meals. Positive `G` means the population grows; negative means it shrinks.
-- **Time between meals** depends on how directed the search is: undirected wandering is bounded by how long a random walk takes to cover the grid; direct navigation should find food in roughly the time it takes to spot something plus walk to it; adding discrimination on top of either slows things down proportionally to how much of what's around has to be skipped.
-- **Fraction of meals that are poisonous** should match `q` exactly for indiscriminate eaters, and be exactly zero for discriminating ones.
+**Meal value.** An indiscriminate eater gets something edible with probability `(1−q)` and something poisonous with probability `q`, so on average:
+
+```
+M = N × [(1 − q) − q×P]
+```
+
+This is only positive when `q < 1/(1+P)` — past that point, poison is common or severe enough that eating anything you find is a net loss regardless of `N`. A discriminating eater, which only ever eats edible mushrooms, instead gets `M = N` every meal.
+
+**Net energy per step**, for either kind of eater:
+
+```
+G = M/T − d
+```
+
+— energy gained per meal, spread over the average wait between meals, minus the constant cost of being alive. Positive `G` means a population would grow; negative means it would shrink.
+
+**Time between meals (`T`)** is where the four behaviours diverge:
+
+- **`wander`** (random movement, eats anything): finding a target covering a fraction `m` of the grid takes at least `4/m` steps — the best case, since only 1 of the 4 possible actions (stay / turn left / turn right / forward) actually reaches a new cell, so covering `1/m` new cells needs roughly `4×(1/m)` steps even with no wasted effort. In practice a random walk revisits ground, so the realistic bound is `4t*`, where `t*` is the grid's random-walk cover time — the `t` solving `π·t / ln(8t) = 1/m`.
+- **`approach_all`** (navigates to the nearest visible mushroom, eats anything): `T ≈ 1/(5m) + 4`. Moving forward reveals 5 new cells at a time, so a mushroom enters view roughly every `1/(5m)` steps ("spotting"); reaching it once spotted takes about 4 more steps on average ("reaching").
+- **`discriminate`** (navigates to the nearest visible *edible* mushroom, eats only edible): same spotting-and-reaching shape, but only a `(1−q)` fraction of mushrooms are valid targets, so `T ≈ 1/(5m(1−q)) + 4`.
+- **`discriminating_wanderer`** (random movement, eats only edible): movement is identical to `wander`, but a poisonous mushroom underfoot doesn't count as a meal — only a `(1−q)` fraction of landings do. So `T ≈ wander's T / (1−q)`.
+
+**Fraction of meals that are poisonous** should match `q` for the indiscriminate eaters, and be exactly zero for the discriminating ones, by construction.
 
 ## Results
 
@@ -71,6 +91,18 @@ Measured over 1,000 independent runs per configuration, 20,000 steps each, on a 
 
 **The main finding:** `discriminate` beats every other policy's `G` at every single configuration tested. More specifically, navigation and discrimination are *synergistic*, not additive — combining them produces a larger gain than the sum of their individual effects, and the gap grows with how dangerous the environment is (`q`). Navigating quickly toward food is actively harmful on its own once most food is poisonous (`approach_all` underperforms `wander` at `q=0.75`), but becomes highly valuable once paired with the ability to tell food apart. Discrimination, on the other hand, helps on its own at every density and danger level tested — which matters for how a discriminating strategy could plausibly evolve one capability at a time.
 
-## Status
+## Research plan
 
-All four behaviours above are implemented and validated against the predictions. Next: introducing reproduction, so that a population's growth or decline can be studied directly rather than inferred from a single agent's energy balance.
+The project moves through four stages, each validated before the next is built on top of it.
+
+**Stage 1 — hand-coded baselines (complete, above).** Validate the environment's mechanics and the energy-budget predictions using simple, fixed behaviours, with a single agent and no reproduction — before any learning is involved. This is the foundation everything else depends on: if the environment didn't behave the way the maths predicted here, nothing built on top of it could be trusted either.
+
+**Stage 2 — reproduction, no mutation (next).** A single lineage, starting from one agent, can now reproduce once it accumulates enough energy — testing whether a population sustains or grows itself under a given policy, with the goal of finding parameters where it declines *slowly* rather than exploding or collapsing immediately. Stage 1's results feed directly into this choice:
+
+- `q` has to stay below `1/(1+P)` (`0.5` at `P=1`) — every configuration tested at `q ≥ 0.5` gave `wander` a `G` at or below `−d`, meaning indiscriminate foraging can never sustain a population there no matter how nutrition (`N`) is tuned.
+- Even at the one viable `q` (`0.25`), the `N=10` used for Stage 1's validation is far too low — getting `wander` close to a slow decline instead of a sharp one needs `N` roughly 5-50× higher (more at low density, less at high density), since `G` depends on the ratio `N/d`, not either alone.
+- The population also has to stay small enough that agents aren't competing with each other for food — see Stage 3.
+
+**Stage 3 — competition.** Many agents sharing one grid at once. Because eaten mushrooms respawn instantly, total food supply never actually drops as the population grows — competition instead shows up as two more specific effects: agents collectively re-searching the grid faster helps undirected wanderers find food sooner, while agents racing each other to a spotted mushroom hurts navigating agents that can lose the race. Both become significant once the population reaches roughly `1/14` to `1/10` of the number of grid cells — a threshold Stage 2 needs to stay under to keep its single-agent-derived parameters valid.
+
+**Stage 4 — evolution.** Replace the hand-coded behaviours with evolved neural controllers (mutation on), to test whether the discrimination advantage measured in Stage 1 actually gets discovered from random starting behaviour — and, since movement and eating are independent outputs, whether it's found by improving navigation first or diet first. The synergy result above (discrimination helps alone at every configuration tested, navigation doesn't) is a concrete prediction for which route evolution is more likely to take, especially in more dangerous environments.
