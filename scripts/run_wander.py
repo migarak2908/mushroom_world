@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import jax.numpy as jnp
 
-from policy import wander
+from baselines import wander
 from runner import build_world, run_policy_batch, log_results
 
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         nb_mushrooms=NB_MUSHROOMS, mushroom_nutrition=MUSHROOM_NUTRITION,
         poison_proportion=POISON_PROPORTION, poison_multiplier=POISON_MULTIPLIER,
     )
-    T, fraction_poisonous, G = run_policy_batch(world, wander, NUM_STEPS, NUM_SEEDS)
+    T, T_first, fraction_poisonous, G = run_policy_batch(world, wander, NUM_STEPS, NUM_SEEDS)
 
     m = NB_MUSHROOMS / (SX * SY)
     n_zero_meal = int(jnp.isnan(T).sum())
@@ -46,4 +46,4 @@ if __name__ == "__main__":
         SX=SX, SY=SY, m=m, q=POISON_PROPORTION, N=MUSHROOM_NUTRITION, P=POISON_MULTIPLIER,
         d=ENERGY_DECAY, energy_start=ENERGY_START, num_steps=NUM_STEPS, num_seeds=NUM_SEEDS,
     )
-    log_results("wander", config, T, fraction_poisonous, G)
+    log_results("wander", config, T, T_first, fraction_poisonous, G)

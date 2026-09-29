@@ -49,9 +49,13 @@ def run_policy(world, policy, num_steps, key):
     meals = eat_deltas != 0
     meal_count = meals.sum()
     T = jnp.where(meal_count > 0, num_steps / meal_count, jnp.nan)
+
+    first_meal_idx = jnp.argmax(meals.astype(jnp.int32))
+    T_first = jnp.where(meal_count > 0, (first_meal_idx + 1).astype(jnp.float32), jnp.nan)
+
     fraction_poisonous = jnp.where(meal_count > 0, (eat_deltas < 0).sum() / meal_count, jnp.nan)
     G = eat_deltas.mean() - world.energy_decay
-    return T, fraction_poisonous, G
+    return T, T_first, fraction_poisonous, G
 
 
 def run_policy_batch(world, policy, num_steps, num_seeds, base_seed=0):
@@ -60,22 +64,31 @@ def run_policy_batch(world, policy, num_steps, num_seeds, base_seed=0):
     return jax.vmap(run_one)(keys)   # each output shape (num_seeds,)
 
 
-def log_results(policy_name, config, T, fraction_poisonous, G):
+def log_results(policy_name, config, T, T_first, fraction_poisonous, G):
     wandb.init(project="mushroom-language", config={**config, "policy": policy_name})
 
     n_zero_meal_seeds = int(jnp.isnan(T).sum())
     T_valid = T[~jnp.isnan(T)]
+    T_first_valid = T_first[~jnp.isnan(T_first)]
+
+    summary = dict(
+        T_mean=float(jnp.nanmean(T)), T_std=float(jnp.nanstd(T)),
+        T_first_mean=float(jnp.nanmean(T_first)), T_first_std=float(jnp.nanstd(T_first)),
+        fraction_poisonous_mean=float(jnp.nanmean(fraction_poisonous)),
+        G_mean=float(G.mean()), G_std=float(G.std()),
+        zero_meal_seeds=n_zero_meal_seeds,
+    )
 
     wandb.log({
-        "T_mean": float(jnp.nanmean(T)), "T_std": float(jnp.nanstd(T)),
-        "fraction_poisonous_mean": float(jnp.nanmean(fraction_poisonous)),
-        "G_mean": float(G.mean()), "G_std": float(G.std()),
-        "zero_meal_seeds": n_zero_meal_seeds,
+        **summary,
         "T_histogram": wandb.Histogram(T_valid) if T_valid.size > 0 else None,
+        "T_first_histogram": wandb.Histogram(T_first_valid) if T_first_valid.size > 0 else None,
         "G_histogram": wandb.Histogram(G),
         "per_seed": wandb.Table(dataframe=pd.DataFrame({
             "seed": range(len(T)),
-            "T": T, "fraction_poisonous": fraction_poisonous, "G": G,
+            "T": T, "T_first": T_first, "fraction_poisonous": fraction_poisonous, "G": G,
         })),
     })
     wandb.finish()
+
+    return summary
