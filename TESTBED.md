@@ -49,6 +49,46 @@ G = M/T − d
 
 **Fraction of meals that are poisonous** should match `q` for the indiscriminate eaters, and be exactly zero for the discriminating ones, by construction.
 
+### Predicted values
+
+Evaluating the formulas above at the parameters actually tested (20×20 grid, `N=10`, `P=1`, `d=0.5`). `wander` and `discriminating_wanderer` get ranges rather than point estimates, since random search is bounded rather than exactly determined.
+
+**Predicted `T`**
+
+| `m` | `q` | wander | approach_all | discriminating_wanderer | discriminate |
+|---|---|---|---|---|---|
+| 0.01 | 0.25 | 400–963 | 24 | 533–1284 | 31 |
+| 0.01 | 0.5 | 400–963 | 24 | 800–1926 | 44 |
+| 0.01 | 0.75 | 400–963 | 24 | 1600–3852 | 84 |
+| 0.02 | 0.25 | 200–430 | 14 | 267–574 | 17 |
+| 0.02 | 0.5 | 200–430 | 14 | 400–860 | 24 |
+| 0.02 | 0.75 | 200–430 | 14 | 800–1721 | 44 |
+| 0.04 | 0.25 | 100–189 | 9 | 133–252 | 11 |
+| 0.04 | 0.5 | 100–189 | 9 | 200–378 | 14 |
+| 0.04 | 0.75 | 100–189 | 9 | 400–756 | 24 |
+| 0.08 | 0.25 | 50–81 | 6 | 67–108 | 7 |
+| 0.08 | 0.5 | 50–81 | 6 | 100–162 | 9 |
+| 0.08 | 0.75 | 50–81 | 6 | 200–324 | 14 |
+
+**Predicted `G`**
+
+| `m` | `q` | wander | approach_all | discriminating_wanderer | discriminate |
+|---|---|---|---|---|---|
+| 0.01 | 0.25 | −0.49 | −0.29 | −0.49 to −0.48 | −0.17 |
+| 0.01 | 0.5 | −0.50 | −0.50 | −0.49 | −0.27 |
+| 0.01 | 0.75 | −0.51 | −0.71 | −0.50 | −0.38 |
+| 0.02 | 0.25 | −0.49 to −0.47 | −0.14 | −0.48 to −0.46 | +0.08 |
+| 0.02 | 0.5 | −0.50 | −0.50 | −0.49 to −0.47 | −0.08 |
+| 0.02 | 0.75 | −0.53 to −0.51 | −0.86 | −0.49 | −0.27 |
+| 0.04 | 0.25 | −0.47 to −0.45 | +0.06 | −0.46 to −0.42 | +0.44 |
+| 0.04 | 0.5 | −0.50 | −0.50 | −0.47 to −0.45 | +0.21 |
+| 0.04 | 0.75 | −0.55 to −0.53 | −1.06 | −0.49 to −0.47 | −0.08 |
+| 0.08 | 0.25 | −0.44 to −0.40 | +0.27 | −0.41 to −0.35 | +0.86 |
+| 0.08 | 0.5 | −0.50 | −0.50 | −0.44 to −0.40 | +0.61 |
+| 0.08 | 0.75 | −0.60 to −0.56 | −1.27 | −0.47 to −0.45 | +0.21 |
+
+Note the `q=0.5` column for the two indiscriminate eaters: at `P=1`, `M = N×[(1−q) − q×P]` is exactly zero there, so `G` collapses to exactly `−d` no matter how fast the agent finds food. That makes it a useful check — any measured deviation from `−0.50` at `q=0.5` for `wander` or `approach_all` would indicate something wrong with the energy accounting.
+
 ## Results
 
 Measured over 1,000 independent runs per configuration, 20,000 steps each, on a 20×20 grid (`N=10`, `P=1`, `d=0.5`):
@@ -87,7 +127,15 @@ Measured over 1,000 independent runs per configuration, 20,000 steps each, on a 
 | 0.08 | 0.5 | −0.50 | −0.50 | −0.43 | **+0.50** |
 | 0.08 | 0.75 | −0.57 | −1.42 | −0.47 | **+0.01** |
 
-`fraction_poisonous` matched predictions exactly throughout: ≈`q` for `wander`/`approach_all`, and exactly `0` for `discriminating_wanderer`/`discriminate` across every one of the 36,000 runs. `T` matched the predicted shape in every case, with the closest match at high density and somewhat larger gaps at the sparsest, most dangerous corner (`m=0.01, q=0.75`), where a meaningful share of runs (up to ~30%) never encountered a qualifying mushroom at all within 20,000 steps — an expected consequence of low effective food density, not a modelling error.
+**Against the predictions:**
+
+- **The two random-movement behaviours land inside their predicted ranges essentially everywhere.** `wander` falls within its `4/m` to `4t*` bounds at all 12 configurations, and `discriminating_wanderer` within its scaled version of those bounds at 10 of 12 (the two exceptions, both at `q=0.75`, overshoot by under 2%).
+- **The two navigating behaviours generally find food more slowly than predicted**, and the size of the gap depends strongly on density: it closes almost completely at the highest density tested (`approach_all` actually beats its prediction there, 5 steps against 6) and widens as food gets sparser, reaching roughly double the predicted `T` at the sparsest settings. This is a known consequence of how navigation is implemented rather than a modelling error: the rule pursues targets that are directly ahead or immediately to one side, but leaves targets at the outer edges of the visual window to be picked up by chance — which matters more when a target in view is a rarer event. It was built this way deliberately: a rule that always steers toward whichever target is nearest can lock into an infinite turn-left/turn-right oscillation when two targets sit on opposite flanks.
+- **That slower search propagates into `G` in the direction the formula says it should.** Because `G = M/T − d`, a larger-than-predicted `T` pulls `G` toward `−d` from whichever side it was on: the navigating policies come in below prediction where food is profitable (`q=0.25`) and above it where food is a net loss (`q=0.75`). Every deviation is accounted for by the single `T` discrepancy above.
+- **The `q=0.5` check passes.** Both indiscriminate eaters measured `G = −0.50` at every density (one reading of `−0.51`, within sampling noise) — matching the analytically exact value and confirming the energy accounting is sound.
+- **`fraction_poisonous` matched predictions throughout:** ≈`q` for `wander`/`approach_all`, and exactly `0` for `discriminating_wanderer`/`discriminate` across all 36,000 runs.
+
+At the sparsest and most dangerous corner (`m=0.01, q=0.75`), up to ~30% of runs never encountered a qualifying mushroom at all within 20,000 steps — an expected consequence of effective edible density falling to `m×(1−q) = 0.0025`, and the reason estimates are noisiest there.
 
 **The main finding:** `discriminate` beats every other policy's `G` at every single configuration tested. More specifically, navigation and discrimination are *synergistic*, not additive — combining them produces a larger gain than the sum of their individual effects, and the gap grows with how dangerous the environment is (`q`). Navigating quickly toward food is actively harmful on its own once most food is poisonous (`approach_all` underperforms `wander` at `q=0.75`), but becomes highly valuable once paired with the ability to tell food apart. Discrimination, on the other hand, helps on its own at every density and danger level tested — which matters for how a discriminating strategy could plausibly evolve one capability at a time.
 
