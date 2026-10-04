@@ -6,7 +6,7 @@ import pandas as pd
 
 from baselines import wander, approach_all, discriminating_wanderer, discriminate, wander_0_5, approach_all_0_5
 from runner import build_world, run_policy_batch
-from metrics import compute_reproduction_metrics, summarize_condition
+from metrics import compute_reproduction_metrics, summarize_condition, log_reproduction_results
 
 
 SX, SY = 20, 20
@@ -47,10 +47,15 @@ if __name__ == "__main__":
             nb_mushrooms=nb_mushrooms, mushroom_nutrition=MUSHROOM_NUTRITION,
             poison_proportion=Q, poison_multiplier=POISON_MULTIPLIER,
         )
+        config = dict(SX=SX, SY=SY, m=M, q=Q, N=MUSHROOM_NUTRITION, P=POISON_MULTIPLIER,
+                      d=ENERGY_DECAY, energy_start=ENERGY_START, r_thresh=thresh, r_cost=R_COST,
+                      num_steps=NUM_STEPS, num_seeds=NUM_SEEDS)
+
         for name, policy in POLICIES:
             births, alive, eat_deltas = run_policy_batch(world, policy, NUM_STEPS, NUM_SEEDS)
             metrics = compute_reproduction_metrics(births, alive, eat_deltas, NUM_STEPS)
             summary = summarize_condition(metrics)
+            summary = log_reproduction_results(name, config, metrics, summary)
 
             print(f"{name:25s} r_thresh={thresh}  offspring_mean={summary['offspring_mean']:.3f}  "
                   f"offspring_p90={summary['offspring_p90']:.1f}  lifespan_mean={summary['lifespan_mean']:.1f}  "

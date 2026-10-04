@@ -72,6 +72,28 @@ def summarize_condition(metrics):
     )
 
 
+def log_reproduction_results(policy_name, config, metrics, summary):
+    wandb.init(project="mushroom-language", config={**config, "policy": policy_name})
+
+    wandb.log({
+        **summary,
+        "offspring_histogram": wandb.Histogram(metrics["offspring_count"]),
+        "lifespan_histogram": wandb.Histogram(metrics["lifespan"]),
+        "per_seed": wandb.Table(dataframe=pd.DataFrame({
+            "seed": range(len(metrics["offspring_count"])),
+            "offspring_count": metrics["offspring_count"],
+            "censored": metrics["censored"],
+            "lifespan": metrics["lifespan"],
+            "first_birth_step": metrics["first_birth_step"],
+            "meals_edible": metrics["meals_edible"],
+            "meals_poisonous": metrics["meals_poisonous"],
+        })),
+    })
+    wandb.finish()
+
+    return summary
+
+
 def log_results(policy_name, config, T, T_first, fraction_poisonous, G):
     wandb.init(project="mushroom-language", config={**config, "policy": policy_name})
 
