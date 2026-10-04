@@ -29,6 +29,10 @@ class World(eqx.Module):
     food_sources: tuple
     observation_channels: tuple
     death_enabled: bool = eqx.field(static=True, default=True)
+    reproduction_enabled: bool = eqx.field(static=True, default=False)
+    r_thresh: float = 0.0
+    r_cost: float = 0.0
+
 
 
     def __post_init__(self):
@@ -75,9 +79,10 @@ class World(eqx.Module):
         agents, food_states, eat_energy_delta = self._apply_eat(key, agents, food_states, eat_decision)
         agents = self._apply_movement(agents, turn, move)
         agents = self._apply_decay(agents)
+        agents, births = self._apply_reproduction(agents)
         agents = self._apply_death(agents)
 
-        return agents, food_states, eat_energy_delta
+        return agents, food_states, eat_energy_delta, births
 
     def _build_obs(self, agents, food_states):
 
@@ -141,19 +146,33 @@ class World(eqx.Module):
 
         return agents
 
+    def _apply_reproduction(self, agents):
+        if not self.reproduction_enabled:
+            births = jnp.zeros_like(agents.alive, dtype=bool)
+            return agents, births
+        else:
+            births = agents.alive.astype(bool) & (agents.energy >= self.r_thresh)
+            energy = jnp.where(births, agents.energy - self.r_cost, agents.energy)
+            agents = Agents(posx=agents.posx,
+                            posy=agents.posy,
+                            alive=agents.alive,
+                            direction=agents.direction,
+                            energy=energy)
+            return agents, births
+
     def _apply_death(self, agents):
         if not self.death_enabled:
             return agents
+        else:
+            new_alive = jnp.where(agents.alive.astype(bool) & (agents.energy > 0), 1, 0)
 
-        new_alive = jnp.where(agents.alive.astype(bool) & (agents.energy > 0), 1, 0)
+            agents = Agents(posx=agents.posx,
+                            posy=agents.posy,
+                            alive=new_alive,
+                            direction=agents.direction,
+                            energy=agents.energy)
 
-        agents = Agents(posx=agents.posx,
-                        posy=agents.posy,
-                        alive=new_alive,
-                        direction=agents.direction,
-                        energy=agents.energy)
-
-        return agents
+            return agents
 
     def _bearing_and_distance(self,
                               agents,

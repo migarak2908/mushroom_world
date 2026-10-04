@@ -7,7 +7,8 @@ import jax.numpy as jnp
 import pandas as pd
 
 from baselines import wander, approach_all, discriminating_wanderer, discriminate, wander_0_5, approach_all_0_5
-from runner import build_world, run_policy_batch, log_results
+from runner import build_world, run_policy_batch
+from metrics import compute_metrics, log_results
 
 
 SX, SY = 20, 20
@@ -41,6 +42,7 @@ if __name__ == "__main__":
         world = build_world(
             SX=SX, SY=SY, nb_agents=NB_AGENTS, max_agents=MAX_AGENTS,
             energy_start=ENERGY_START, energy_decay=ENERGY_DECAY, death_enabled=False,
+            reproduction_enabled=False, r_thresh=0.0, r_cost=0.0,
             nb_mushrooms=nb_mushrooms, mushroom_nutrition=MUSHROOM_NUTRITION,
             poison_proportion=q, poison_multiplier=POISON_MULTIPLIER,
         )
@@ -48,7 +50,8 @@ if __name__ == "__main__":
                       d=ENERGY_DECAY, energy_start=ENERGY_START, num_steps=NUM_STEPS, num_seeds=NUM_SEEDS)
 
         for name, policy in POLICIES:
-            T, T_first, fraction_poisonous, G = run_policy_batch(world, policy, NUM_STEPS, NUM_SEEDS)
+            births, alive, eat_deltas = run_policy_batch(world, policy, NUM_STEPS, NUM_SEEDS)
+            T, T_first, fraction_poisonous, G = compute_metrics(eat_deltas, NUM_STEPS, ENERGY_DECAY)
 
             summary = log_results(name, config, T, T_first, fraction_poisonous, G)
 
