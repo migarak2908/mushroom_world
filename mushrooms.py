@@ -31,7 +31,8 @@ class MushroomSource(eqx.Module):
         all_cells = jnp.arange(self.SX * self.SY)
         food_cells = jax.random.choice(sk1, all_cells, shape=(self.nb_mushrooms,), replace=False)
         posx, posy = food_cells // self.SY, food_cells % self.SY
-        type = jax.random.bernoulli(sk2, p=(1-self.poison_proportion), shape=(self.nb_mushrooms,))
+        nb_edible = jnp.round(self.nb_mushrooms * (1 - self.poison_proportion)).astype(int)
+        type = jax.random.permutation(sk2, jnp.arange(self.nb_mushrooms) < nb_edible)
         mushrooms = Mushrooms(posx=posx, posy=posy, type=type)
 
         return mushrooms
