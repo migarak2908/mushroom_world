@@ -168,9 +168,9 @@ The project moves through five stages, each validated before the next is built o
 
 **Stage 1 — hand-coded baselines (complete, above).** Point: measure how often each strategy finds food (`T`) and whether energy per step behaves as predicted (`G = M/T − d`). Why: `T` is the one quantity the energy budget can't pin down exactly — everything else (`N`, `P`, `q`, `d`) is arithmetic on top of it. Gives: measured `T` for each strategy and density, confirmed against the energy equation, so `N`, `P`, `q`, `d` can be chosen on paper instead of by trial and error for every later stage.
 
-**Stage 2 — reproduction calibration (next).** Point: find the reproduction threshold `R_thresh` at which a random-like agent (`wander_0_5`) averages about 0.8 offspring per lifetime — low enough that a random starting population declines, high enough that mutation has time (~10 generations) to find something better before it dies out. Why: evolution acts on offspring, not energy, and `G` alone can't say how energy converts into births — at the chosen parameters `wander_0_5`'s average lifetime energy drift is about `−200`, but single-meal swings (`+62` edible, `−31` poisonous) are `±500`, so luck dominates whether a given lineage actually reproduces; that has to be measured per-seed, not calculated from `G`. Gives: a calibrated `R_thresh`, and confirmation that reproduction counts track `G` for the policies where luck matters less.
+**Stage 2 — reproduction calibration (complete).** Point: find the reproduction threshold `R_thresh` at which a random-like agent (`wander_0_5`) averages about 0.8 offspring per lifetime — low enough that a random starting population declines, high enough that mutation has time (~10 generations) to find something better before it dies out. Why: evolution acts on offspring, not energy, and `G` alone can't say how energy converts into births — at the chosen parameters `wander_0_5`'s average lifetime energy drift is about `−200`, but single-meal swings (`+62` edible, `−31` poisonous) are `±500`, so luck dominates whether a given lineage actually reproduces; that has to be measured per-seed, not calculated from `G`. Gives: a calibrated `R_thresh`, and confirmation that reproduction counts track `G` for the policies where luck matters less.
 
-Chosen environment (derived from the Stage 1 `T` fits at `m=0.04`): `q=0.5`, `P=0.5`, `N=62`, `d=0.1`, `R_cost=200` (equal to a newborn's starting energy, so reproduction neither creates nor destroys energy). This keeps `wander_0_5` just below break-even (`G≈−0.010`) while clearly rewarding both routes to discrimination: `discriminating_wanderer` (`G≈+0.109`) beats `wander` (`G≈+0.005`), and `discriminate` reproduces about `2.2×` faster than `approach_all` (`G≈+4.71` vs `+2.11`).
+Environment (derived from the Stage 1 `T` fits at `m=0.04`): `q=0.5`, `P=0.5`, `N=62`, `d=0.1`, `R_cost=200` (equal to a newborn's starting energy, so reproduction neither creates nor destroys energy). This keeps `wander_0_5` just below break-even (`G≈−0.010`) while clearly rewarding both routes to discrimination: `discriminating_wanderer` (`G≈+0.109`) beats `wander` (`G≈+0.005`), and `discriminate` reproduces about `2.2×` faster than `approach_all` (`G≈+4.71` vs `+2.11`).
 
 | Policy | `G` | Predicted |
 |---|---|---|
@@ -180,7 +180,26 @@ Chosen environment (derived from the Stage 1 `T` fits at `m=0.04`): `q=0.5`, `P=
 | `approach_all` | +2.11 | ~1 birth every 95 steps |
 | `discriminate` | +4.71 | ~1 birth every 42 steps |
 
-`R_thresh` swept over `{250, 300, 400, 500, 750, 1000}` (above 200, so the parent survives reproducing), 1,000 seeds each, agent starts at 200 energy, 100,000-step cap with starvation on. Offspring are counted but not added to the world, keeping agent density equal to Stage 1 (so its `T` values stay valid) and isolating the energy-to-offspring question from population dynamics.
+`R_thresh` swept over `{250, 300, 350, 400}` (above 200, so the parent survives reproducing), 1,000 seeds each, agent starts at 200 energy, 100,000-step cap with starvation on. Offspring are counted but not added to the world, keeping agent density equal to Stage 1 (so its `T` values stay valid) and isolating the energy-to-offspring question from population dynamics. Measured:
+
+| Policy | `R_thresh` | offspring mean/median/p90 | frac ≥1 | mean lifespan | frac censored | births/1000 steps (censored) |
+|---|---|---|---|---|---|---|
+| `wander_0_5` | 250 | 0.96 / 1 / 2 | 0.724 | 2,023 | 0 | — |
+| `wander_0_5` | 300 | 0.92 / 1 / 2 | 0.587 | 3,418 | 0 | — |
+| `wander_0_5` | 350 | 0.88 / 1 / 2 | 0.502 | 4,579 | 0 | — |
+| `wander_0_5` | 400 | 0.84 / 0 / 3 | 0.426 | 5,923 | 0 | — |
+| `wander` | 250 | 1.15 / 1 / 2 | 0.774 | 2,011 | 0 | — |
+| `wander` | 300 | 1.22 / 1 / 3 | 0.670 | 3,462 | 0 | — |
+| `wander` | 350 | 1.25 / 1 / 3 | 0.587 | 4,803 | 0 | — |
+| `wander` | 400 | 1.35 / 1 / 4 | 0.537 | 6,357 | 0 | — |
+| `discriminating_wanderer` | 250 | 6.87 / 5 / 15 | 0.996 | 10,378 | 0 | — |
+| `discriminating_wanderer` | 300 | 22.6 / 17 / 55 | 0.995 | 38,363 | 0.094 | 0.60 |
+| `discriminating_wanderer` | 350 | 41.9 / 50 / 63 | 0.995 | 73,349 | 0.510 | 0.57 |
+| `discriminating_wanderer` | 400 | 50.6 / 55 / 63 | 0.995 | 89,887 | 0.805 | 0.57 |
+
+Both `wander` and `wander_0_5` are fully resolved (`frac censored = 0`) at every `R_thresh` tested — their `G` is close enough to zero that luck decides the outcome before the 100,000-step cap is reached, matching the prediction. `discriminating_wanderer`'s births-per-1,000-steps among censored runs (`≈0.57–0.60`) matches its predicted rate almost exactly (`G/R_cost × 1000 = 0.109/200 × 1000 ≈ 0.55`), confirming reproduction counts track `G` once luck stops dominating.
+
+**Chosen: `R_thresh = 400`** — `wander_0_5`'s mean offspring (`0.84`) lands in the target range, `wander` (`1.35`) and `discriminating_wanderer` (`50.6`) clearly exceed it, and `R_cost = 200` stays unchanged.
 
 **Stage 3 — crowding.** Point: find out how many agents share the grid before they start taking each other's food, and where the population settles. Why: single-agent numbers only hold while agents don't interfere — evolution needs real competition so the population is limited by food (not by hitting a hard cap) and so fitness is relative, with better agents replacing worse ones. Gives: a grid size and mushroom count where competition — not the population cap — limits growth, expected once population reaches roughly `1/14` to `1/10` of the number of grid cells.
 
